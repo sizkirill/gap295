@@ -14,12 +14,12 @@ extern printf:NEAR
 
 ; Beginning of data section.
 .data
-	eaxString db 'EAX: %u', 0ah, 0
-    newline db 0ah, 0
-    ; name size init-value
-    integer dd 2, 4, 6
+        eaxString db 'EAX: %u', 0ah, 0
+        newline db 0ah, 0
+        ; name size init-value
+        integer dd 2, 4, 6
 
-    foo dd 0
+        foo dd 0
 
 ; Beginning of code section.	
 .code

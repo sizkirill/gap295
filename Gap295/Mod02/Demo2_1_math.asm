@@ -15,7 +15,7 @@ extern printf:NEAR
 ; Beginning of data section.
 .data
 	eaxString db 'EAX: %u', 0ah, 0
-    newline db 0ah, 0
+        newline db 0ah, 0
 	
 ; Beginning of code section.	
 .code
@@ -70,10 +70,10 @@ main proc C
 
         call PrintNewLine
 
-		; EAX is used as the return value for all functions.  Doing this will return success back to the operating 
-		; system.
-		mov eax, 0
-		ret
+        ; EAX is used as the return value for all functions.  Doing this will return success back to the operating 
+        ; system.
+        mov eax, 0
+        ret
 main endp
 
 ; Prints the value of EAX as a decimal number. EAX is not modified by this call.
