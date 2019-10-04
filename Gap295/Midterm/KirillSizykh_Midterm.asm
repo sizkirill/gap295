@@ -24,15 +24,24 @@ extern system:NEAR
     clearScreen db 'cls', 0
     fakeClearScreen db 0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0
 
+    loseString db 'Oh nO! You lost!', 0ah, 0
+    winString db 'Congrats! You win!', 0ah, 0
+
     ; MACROS
-    MAP_WIDTH EQU 40
-    MAP_HEIGHT EQU 15
+    MAP_WIDTH EQU 50
+    MAP_HEIGHT EQU 30
+    ENEMY_COUNT EQU 5
+
+    MAP_OFFSET EQU MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+    ENEMY_OFFSET EQU MAP_OFFSET + ENEMY_COUNT * 8
 
 InitPlayer MACRO
     call rand
+    xor edx, edx
     idiv MAP_WIDTH
     mov offset player, edx
     call rand
+    xor edx, edx
     idiv MAP_HEIGHT
     mov offset player + 4, edx
 ENDM
@@ -53,20 +62,100 @@ InitializeMap MACRO
         mov byte ptr [edi-1], 0h
 ENDM
 
+InitializeEnemies MACRO
+        mov edi, ebp
+        sub edi, ENEMY_OFFSET
+        mov ebx, 0
+    InitEnemyLoop:
+        call rand
+        mov ecx, MAP_WIDTH
+        xor edx, edx
+        idiv ecx
+        mov [edi], edx
+        call rand
+        mov ecx, MAP_HEIGHT
+        xor edx, edx
+        idiv ecx
+        mov [edi+4], edx
+
+        ;;;; CHECKING IF SPACE IS EMPTY
+        mov esi, ebp
+        sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add esi, [edi]
+        mov ecx, MAP_WIDTH + 1
+        imul ecx, [edi+4]
+        add esi, ecx
+        cmp [esi], byte ptr 2eh
+        jne InitEnemyLoop
+        mov [esi], byte ptr 45h
+        ;;;;
+
+        add edi, 8
+        inc ebx
+        cmp ebx, ENEMY_COUNT
+        jl InitEnemyLoop
+ENDM
+
+ClearScreen MACRO
+        push offset clearScreen
+        call system
+        add esp, 4
+ENDM
+
+FakeClearScreen MACRO
+        push offset fakeClearScreen
+        call printf
+        add esp, 4
+ENDM
+
 PrintMap MACRO
         ;push offset clearScreen
         ;call system
         ;add esp,4
 
-        push offset fakeClearScreen
+        ClearScreen
+
+        push [edi+4]
+        push [edi]
+        push offset playerPosTestString
         call printf
-        add esp, 4
+        add esp, 12
 
         mov esi, ebp
         sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
         push esi
         call printf
         add esp, 4
+ENDM
+
+UpdateEnemies MACRO
+        ; Enemies take turns every other player's turn
+        mov eax, 2
+        xor edx, edx
+        idiv ebx
+        cmp edx, 1
+        je EnemyUpdateExit
+
+        mov ecx, ebp
+        sub ecx, MAP_OFFSET
+
+        mov esi, ebp
+        ; Although player offset should always be in edi, let's make sure of it
+        mov edi, offset player
+        sub esi, ENEMY_OFFSET
+    EnemyUpdateLoop:
+        mov eax, [esi]
+        cmp eax, [edi]
+    ;     je NextIter
+    ;     idiv dword ptr [esi]
+    ;     add [esi], eax
+    ; NextIter:
+    ;     add esi, 4
+    ;     add edi, 4
+        cmp esi, ecx
+        jl EnemyUpdateLoop
+
+    EnemyUpdateExit:
 ENDM
 
 .code
@@ -78,6 +167,7 @@ main proc C
         push esi
 
         sub esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        sub esp, ENEMY_COUNT * 8
 
         push 0
         call time
@@ -90,11 +180,13 @@ main proc C
 
         call rand
         mov ecx, MAP_WIDTH
+        xor edx, edx
         idiv ecx
         mov edi, offset player
         mov [edi], edx
         call rand
         mov ecx, MAP_HEIGHT
+        xor edx, edx
         idiv ecx
         mov [edi+4], edx
 
@@ -107,17 +199,14 @@ main proc C
 
         mov byte ptr [esi], 50h
 
-        ;int 3
+        InitializeEnemies
 
-        push [edi+4]
-        push [edi]
-        ;push 1
-        ;push 1
-        push offset playerPosTestString
-        call printf
-        add esp, 12
-
+        ; Turn counter
+        mov edi, offset player
+        mov ebx, 0
     MainLoop:
+        inc ebx
+        
         PrintMap
 
         mov esi, ebp
@@ -166,14 +255,36 @@ main proc C
         jmp Quit
 
     Update:
+        UpdateEnemies
+
         mov esi, ebp
         sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
         add esi, [edi]
         mov ecx, MAP_WIDTH + 1
         imul ecx, [edi+4]
         add esi, ecx
+
+        ;;;; CHECKING WIN/LOSE CONDITIONS
+        cmp [esi], byte ptr 45h
+        je Lose
+        cmp [esi], byte ptr 57h
+        je Win
+        ;;;;
+
         mov byte ptr [esi], 50h
         jmp MainLoop
+
+    Win:
+        push offset winString
+        call printf
+        add esp, 4
+        jmp Quit
+
+    Lose:
+        push offset loseString
+        call printf
+        add esp, 4
+        jmp Quit
 
     Quit:
         add esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
