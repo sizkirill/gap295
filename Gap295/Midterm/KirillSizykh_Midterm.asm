@@ -145,25 +145,15 @@ UpdateEnemies MACRO
         mov edi, offset player
         sub esi, ENEMY_OFFSET
     EnemyUpdateLoop:
-    ;     mov eax, [esi]
-    ;     sub eax, [edi]
-    ;     jz CompareY
-    ;     cdq
-    ;     idiv eax
-    ;     add [esi], eax
-    ; CompareY:
-    ;     add esi, 4
-    ;     add edi, 4
-    ;     mov eax, [esi]
-    ;     sub eax, [edi]
-    ;     jz NextIter
-    ;     cdq
-    ;     idiv eax
-    ;     add [esi], eax
-    ; NextIter:
-    ;     add esi, 4
-    ;     sub edi, 4
-    ;     cmp esi, ecx
+        mov eax, [esi]
+        sub eax, [edi]
+
+        cmp eax, 0
+        je CompareY
+        jg AddX
+        jl SubX
+
+        cmp esi, ecx
         jl EnemyUpdateLoop
 
     EnemyUpdateExit:
