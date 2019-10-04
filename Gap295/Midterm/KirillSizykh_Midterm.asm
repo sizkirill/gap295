@@ -13,6 +13,7 @@ extern _getch:NEAR
 extern rand:NEAR
 extern srand:NEAR
 extern time:NEAR
+extern system:NEAR
 
 .data
     testString db '%d', 0ah, 0
@@ -20,9 +21,12 @@ extern time:NEAR
 
     playerPosTestString db 'Player pos: x = %d, y = %d', 0ah, 0
 
+    clearScreen db 'cls', 0
+    fakeClearScreen db 0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0ah,0
+
     ; MACROS
-    MAP_WIDTH EQU 10
-    MAP_HEIGHT EQU 10
+    MAP_WIDTH EQU 40
+    MAP_HEIGHT EQU 15
 
 InitPlayer MACRO
     call rand
@@ -50,9 +54,17 @@ InitializeMap MACRO
 ENDM
 
 PrintMap MACRO
-        mov edi, ebp
-        sub edi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        push edi
+        ;push offset clearScreen
+        ;call system
+        ;add esp,4
+
+        push offset fakeClearScreen
+        call printf
+        add esp, 4
+
+        mov esi, ebp
+        sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        push esi
         call printf
         add esp, 4
 ENDM
@@ -105,17 +117,65 @@ main proc C
         call printf
         add esp, 12
 
+    MainLoop:
         PrintMap
 
-; GetInput:
-;         call _getch
-;         cmp 
-;     CaseW:
-;     CaseA:
-;     CaseS:
-;     CaseD:    
+        mov esi, ebp
+        sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add esi, [edi]
+        mov ecx, MAP_WIDTH + 1
+        imul ecx, [edi+4]
+        add esi, ecx
+        mov byte ptr [esi], 2eh
 
+    GetInput:
+        call _getch
+        sub eax, 97
+        jz CaseA
+        sub eax, 3
+        jz CaseD
+        sub eax, 13
+        jz CaseQ
+        sub eax, 2
+        jz CaseS
+        sub eax, 4
+        jz CaseW
+        jmp GetInput
 
+    CaseA:
+        cmp dword ptr [edi], 0
+        je GetInput
+        dec dword ptr [edi]
+        jmp Update
+    CaseD:
+        cmp dword ptr [edi], MAP_WIDTH-1
+        je GetInput
+        inc dword ptr [edi]
+        jmp Update
+    CaseS:
+        cmp dword ptr [edi+4], MAP_HEIGHT-1
+        je GetInput
+        inc dword ptr [edi+4]
+        jmp Update
+    CaseW:
+        cmp dword ptr [edi+4], 0
+        je GetInput
+        dec dword ptr [edi+4]
+        jmp Update
+    CaseQ:
+        jmp Quit
+
+    Update:
+        mov esi, ebp
+        sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add esi, [edi]
+        mov ecx, MAP_WIDTH + 1
+        imul ecx, [edi+4]
+        add esi, ecx
+        mov byte ptr [esi], 50h
+        jmp MainLoop
+
+    Quit:
         add esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
 
         pop esi
