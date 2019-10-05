@@ -19,6 +19,8 @@ extern system:NEAR
     testString db '%d', 0ah, 0
     player dd 0, 0
 
+    turncounter dd 0
+
     playerPosTestString db 'Player pos: x = %d, y = %d', 0ah, 0
 
     clearScreen db 'cls', 0
@@ -130,11 +132,14 @@ ENDM
 
 UpdateEnemies MACRO
         ;int 3
+
         ; Enemies take turns every other player's turn
-        mov eax, 2
+        mov eax, ebx
         xor edx, edx
-        idiv ebx
-        cmp edx, 1
+        mov ecx, 2
+        push ebx
+        idiv ecx
+        cmp edx, 0
         je EnemyUpdateExit
 
         mov ecx, ebp
@@ -145,18 +150,91 @@ UpdateEnemies MACRO
         mov edi, offset player
         sub esi, ENEMY_OFFSET
     EnemyUpdateLoop:
+        push eax
+
+        ; Replacing enemy with empty space
+        mov eax, ebp
+        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add eax, [esi]
+        mov edx, MAP_WIDTH + 1
+        imul edx, [esi+4]
+        add eax, edx
+        mov [eax], byte ptr 2eh
+        ;;
+        pop eax
+
+        ; storing current X of enemy
+        push dword ptr [esi]
+
         mov eax, [esi]
         sub eax, [edi]
-
-        cmp eax, 0
         je CompareY
-        jg AddX
-        jl SubX
+        cmp eax, 0
+        jg IncX
+        inc dword ptr [esi]
+        jmp CompareY
 
+    IncX:
+        dec dword ptr [esi]
+        jmp CompareY
+
+    CompareY:
+        add esi, 4
+        add edi, 4
+        ; Storing current Y of enemy
+        push dword ptr [esi]
+        mov eax, [esi]
+        sub eax, [edi]
+        je CheckPos
+        cmp eax, 0
+        jg IncY
+        inc dword ptr [esi]
+        jmp CheckPos
+
+    IncY:
+        dec dword ptr [esi]
+        jmp CheckPos
+
+    CheckPos:
+        ;;;; CHECKING IF SPACE IS EMPTY
+        mov eax, ebp
+        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add eax, [esi-4]
+        mov edx, MAP_WIDTH + 1
+        imul edx, [esi]
+        add eax, edx
+        cmp [eax], byte ptr 2eh
+        jne RollBack
+        mov [eax], byte ptr 45h
+        jmp RestoreStack
+        ;;;;
+    
+    RollBack:
+        ;int 3;
+        mov eax, ebp
+        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        pop ebx
+        mov [esi], ebx
+        mov edx, MAP_WIDTH + 1
+        imul edx, ebx
+        add eax, edx
+        pop ebx
+        mov [esi-4], ebx
+        add eax, ebx
+        mov [eax], byte ptr 45h
+        jmp NextIter
+
+    RestoreStack:
+        ;Restoring stack before next iteration
+        add esp, 8
+    NextIter:
+        add esi, 4
+        sub edi, 4
         cmp esi, ecx
         jl EnemyUpdateLoop
 
     EnemyUpdateExit:
+        pop ebx
 ENDM
 
 .code
