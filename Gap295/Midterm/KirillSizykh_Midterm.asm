@@ -30,8 +30,8 @@ extern system:NEAR
     winString db 'Congrats! You win!', 0ah, 0
 
     ; MACROS
-    MAP_WIDTH EQU 20
-    MAP_HEIGHT EQU 15
+    MAP_WIDTH EQU 35
+    MAP_HEIGHT EQU 25
 	
     ENEMY_COUNT EQU 5
 	TRAP_COUNT EQU 3
