@@ -20,30 +20,12 @@ extern _getch:NEAR
 main proc C
         push ebp
         mov ebp, esp
-        push edi
 
-        call ShowHealth
+        xor eax, eax
+        or eax, 0AAAAAAAAh
 
-    MainLoop:
-        ; get player input
-        call _getch
-        mov edi, eax
+        int 3
 
-        ; check to see if we're quitting
-        cmp edi, 71h ; 71h == 'q'
-        je Dead
-
-        ; check for death
-        and edi, 0fh ; hacky!
-        sub health, edi
-        cmp health, 0
-        jle Dead
-
-        call ShowHealth
-        jmp MainLoop
-
-    Dead:
-        pop edi
         mov esp, ebp
         pop ebp
 

@@ -224,7 +224,7 @@ main proc C
         ; Although player offset should always be in edi, let's make sure of it
         mov edi, ebp
         sub edi, PLAYER_OFFSET
-        ; ESI stores pointer to the map
+        ; ESI stores pointer to the first enemy
         mov esi, ebp
         sub esi, ENEMY_OFFSET
     EnemyUpdateLoop:
@@ -278,9 +278,9 @@ main proc C
         mov edx, MAP_WIDTH + 1
         imul edx, [esi]
         add eax, edx
-        cmp [eax], byte ptr 2eh
-        ; If position is occupied we're rolling back to our saved position
-        jne RollBack
+        cmp [eax], byte ptr 45h
+        ; If position is occupied with another enemy we're rolling back to our saved position
+        je RollBack
         mov [eax], byte ptr 45h
         ; else we need to restore stack
         jmp RestoreStack
@@ -311,6 +311,44 @@ main proc C
     EnemyUpdateExit:
         pop ebx
         ; End of Enemy update
+
+        ; Draw static objects (traps & exit) if tile is not occupied
+
+        ; Draw traps
+        mov esi, ebp
+        sub esi, TRAP_OFFSET
+        mov ecx, TRAP_COUNT
+    UpdateTraps:
+        mov eax, ebp
+        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add eax, [esi]
+        mov edx, MAP_WIDTH + 1
+        imul edx, [esi+4]
+        add eax, edx
+        cmp [eax], byte ptr 2eh
+        jne NextTrap
+        mov [eax], byte ptr 54h
+    NextTrap:
+        add esi, 8
+        dec ecx
+        cmp ecx, 0
+        jg UpdateTraps
+        ; End draw traps
+
+        ; Draw exit
+        mov esi, ebp
+        sub esi, EXIT_OFFSET
+        mov eax, ebp
+        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add eax, [esi]
+        mov edx, MAP_WIDTH + 1
+        imul edx, [esi+4]
+        add eax, edx
+        cmp [eax], byte ptr 2eh
+        jne ExitDrawn
+        mov [eax], byte ptr 57h
+    ExitDrawn:
+        ; End draw exit
 
         ; Updating player
         mov esi, ebp
