@@ -30,11 +30,11 @@ extern system:NEAR
     winString db 'Congrats! You win!', 0ah, 0
 
     ; MACROS
-    MAP_WIDTH EQU 50
-    MAP_HEIGHT EQU 30
+    MAP_WIDTH EQU 20
+    MAP_HEIGHT EQU 15
 	
-    ENEMY_COUNT EQU 10
-	TRAP_COUNT EQU 5
+    ENEMY_COUNT EQU 5
+	TRAP_COUNT EQU 3
 
     MAP_OFFSET EQU MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
     ENEMY_OFFSET EQU MAP_OFFSET + ENEMY_COUNT * 8
@@ -66,6 +66,68 @@ InitializeMap MACRO
         cmp edi, ebp
         jl InitLoop
         mov byte ptr [edi-1], 0h
+ENDM
+
+InitExit MACRO
+		mov edi, ebp
+        sub edi, EXIT_OFFSET
+        mov ebx, 0
+    InitExitLoop:
+        call rand
+        mov ecx, MAP_WIDTH
+        xor edx, edx
+        idiv ecx
+        mov [edi], edx
+        call rand
+        mov ecx, MAP_HEIGHT
+        xor edx, edx
+        idiv ecx
+        mov [edi+4], edx
+
+        ;;;; CHECKING IF SPACE IS EMPTY
+        mov esi, ebp
+        sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add esi, [edi]
+        mov ecx, MAP_WIDTH + 1
+        imul ecx, [edi+4]
+        add esi, ecx
+        cmp [esi], byte ptr 2eh
+        jne InitExitLoop
+        mov [esi], byte ptr 57h
+ENDM
+
+InitTraps MACRO
+		mov edi, ebp
+        sub edi, TRAP_OFFSET
+        mov ebx, 0
+    InitTrapLoop:
+        call rand
+        mov ecx, MAP_WIDTH
+        xor edx, edx
+        idiv ecx
+        mov [edi], edx
+        call rand
+        mov ecx, MAP_HEIGHT
+        xor edx, edx
+        idiv ecx
+        mov [edi+4], edx
+
+        ;;;; CHECKING IF SPACE IS EMPTY
+        mov esi, ebp
+        sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        add esi, [edi]
+        mov ecx, MAP_WIDTH + 1
+        imul ecx, [edi+4]
+        add esi, ecx
+        cmp [esi], byte ptr 2eh
+        jne InitTrapLoop
+        mov [esi], byte ptr 54h
+        ;;;;
+
+        add edi, 8
+        inc ebx
+        cmp ebx, TRAP_COUNT
+        jl InitTrapLoop
 ENDM
 
 InitializeEnemies MACRO
@@ -249,8 +311,9 @@ main proc C
         push edi
         push esi
 
-        sub esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        sub esp, ENEMY_COUNT * 8
+        ;sub esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        ;sub esp, ENEMY_COUNT * 8
+		sub esp, EXIT_OFFSET
 
         push 0
         call time
@@ -283,6 +346,8 @@ main proc C
         mov byte ptr [esi], 50h
 
         InitializeEnemies
+		InitTraps
+		InitExit
 
         ; Turn counter
         mov edi, offset player
@@ -350,6 +415,8 @@ main proc C
         ;;;; CHECKING WIN/LOSE CONDITIONS
         cmp [esi], byte ptr 45h
         je Lose
+		cmp [esi], byte ptr 54h
+		je Lose
         cmp [esi], byte ptr 57h
         je Win
         ;;;;
@@ -370,7 +437,10 @@ main proc C
         jmp Quit
 
     Quit:
-        add esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+        ;add esp, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
+		;add esp, ENEMY_COUNT*8
+		
+		add esp, EXIT_OFFSET
 
         pop esi
         pop edi
