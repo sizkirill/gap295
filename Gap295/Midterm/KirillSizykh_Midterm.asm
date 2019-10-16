@@ -74,56 +74,43 @@ main proc C
         push edi
         push MAP_WIDTH
         push MAP_HEIGHT
-        push 2eh
         call InitMap
 
         ; Init Player
         PushMapOffset
-
         mov esi, ebp
         sub esi, PLAYER_OFFSET
         push esi
-
         push 1
         push 50h
         call Init
-        ; End init player
 
         ; Init Enemies
         PushMapOffset
-
         mov esi, ebp
         sub esi, ENEMY_OFFSET
         push esi
-
         push ENEMY_COUNT
         push 45h
         call Init
-        ; End init enemies
 
         ; Init Traps
         PushMapOffset
-
         mov esi, ebp
         sub esi, TRAP_OFFSET
         push esi
-
         push TRAP_COUNT
         push 54h
         call Init
-        ; End init traps
 
         ; Init exit
         PushMapOffset
-
         mov esi, ebp
         sub esi, EXIT_OFFSET
         push esi
-
         push 1
         push 57h
         call Init
-        ; End init exit
 
         ; Init Turn counter (enemies take turns every other turn)
         mov ebx, 0
@@ -161,199 +148,76 @@ main proc C
         add esi, ecx
         mov byte ptr [esi], 2eh
 
-    GetInput:
-        call _getch
-        sub eax, 97
-        jz CaseA
-        sub eax, 3
-        jz CaseD
-        sub eax, 13
-        jz CaseQ
-        sub eax, 2
-        jz CaseS
-        sub eax, 4
-        jz CaseW
-        jmp GetInput
+        ; Process player input
+        mov esi, ebp
+        sub esi, PLAYER_OFFSET
+        push esi
+        push MAP_WIDTH
+        push MAP_HEIGHT
+        call GetInput
+        cmp eax, 1
+        je Quit
 
-    CaseA:
-        cmp dword ptr [edi], 0
-        je GetInput
-        dec dword ptr [edi]
-        jmp Update
-    CaseD:
-        cmp dword ptr [edi], MAP_WIDTH-1
-        je GetInput
-        inc dword ptr [edi]
-        jmp Update
-    CaseS:
-        cmp dword ptr [edi+4], MAP_HEIGHT-1
-        je GetInput
-        inc dword ptr [edi+4]
-        jmp Update
-    CaseW:
-        cmp dword ptr [edi+4], 0
-        je GetInput
-        dec dword ptr [edi+4]
-        jmp Update
-    CaseQ:
-        jmp Quit
-
-    Update:
         ; Start Update Enemies
         
         ; Enemies take turns every other player's turn (First turn of the game is skipped)
         mov eax, ebx
         xor edx, edx
         mov ecx, 2
-
-        ; We're gonna use ebx later, so save it for now (main loop counts turns in ebx)
-        push ebx
         
-        ; Counting if enemies are supposed to have turn
+        ; If enemies are not supposed to take turn, skip the enemy update section
         idiv ecx
         cmp edx, 0
         jne EnemyUpdateExit
 
-        mov ecx, ebp
-        sub ecx, MAP_OFFSET
+        ; Push pointer to the start of the map
+        PushMapOffset
+        
+        ; Push map width
+        push MAP_WIDTH
 
-        ; Although player offset should always be in edi, let's make sure of it
-        mov edi, ebp
-        sub edi, PLAYER_OFFSET
-        ; ESI stores pointer to the first enemy
+        ; Push pointer to start of enemies
         mov esi, ebp
         sub esi, ENEMY_OFFSET
-    EnemyUpdateLoop:
-        ; Replacing enemy with empty space
-        mov eax, ebp
-        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        add eax, [esi]
-        mov edx, MAP_WIDTH + 1
-        imul edx, [esi+4]
-        add eax, edx
-        mov [eax], byte ptr 2eh
+        push esi
+        
+        ; Push enemies count
+        push ENEMY_COUNT
 
-        ; storing current X of enemy
-        push dword ptr [esi]
+        ; Push pointer to player
+        mov esi, ebp
+        sub esi, PLAYER_OFFSET
+        push esi
 
-        ; Checking where should the enemy go
-        mov eax, [esi]
-        sub eax, [edi]
-        je CompareY
-        cmp eax, 0
-        jg IncX
-        inc dword ptr [esi]
-        jmp CompareY
-
-    IncX:
-        dec dword ptr [esi]
-        jmp CompareY
-
-    CompareY:
-        add esi, 4
-        add edi, 4
-        ; Storing current Y of enemy
-        push dword ptr [esi]
-        mov eax, [esi]
-        sub eax, [edi]
-        je CheckPos
-        cmp eax, 0
-        jg IncY
-        inc dword ptr [esi]
-        jmp CheckPos
-
-    IncY:
-        dec dword ptr [esi]
-        jmp CheckPos
-
-        ; Checking if the position enemy wants to go to is empty
-    CheckPos:
-        mov eax, ebp
-        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        add eax, [esi-4]
-        mov edx, MAP_WIDTH + 1
-        imul edx, [esi]
-        add eax, edx
-        cmp [eax], byte ptr 45h
-        ; If position is occupied with another enemy we're rolling back to our saved position
-        je RollBack
-        mov [eax], byte ptr 45h
-        ; else we need to restore stack
-        jmp RestoreStack
-    
-    RollBack:
-        mov eax, ebp
-        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        pop ebx
-        mov [esi], ebx
-        mov edx, MAP_WIDTH + 1
-        imul edx, ebx
-        add eax, edx
-        pop ebx
-        mov [esi-4], ebx
-        add eax, ebx
-        mov [eax], byte ptr 45h
-        jmp NextIter
-
-    RestoreStack:
-        ;Restoring stack before next iteration
-        add esp, 8
-    NextIter:
-        add esi, 4
-        sub edi, 4
-        cmp esi, ecx
-        jl EnemyUpdateLoop
-
+        call UpdateEnemies
     EnemyUpdateExit:
-        pop ebx
-        ; End of Enemy update
-
-        ; Draw static objects (traps & exit) if tile is not occupied
 
         ; Draw traps
+        PushMapOffset
         mov esi, ebp
         sub esi, TRAP_OFFSET
-        mov ecx, TRAP_COUNT
-    UpdateTraps:
-        mov eax, ebp
-        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        add eax, [esi]
-        mov edx, MAP_WIDTH + 1
-        imul edx, [esi+4]
-        add eax, edx
-        cmp [eax], byte ptr 2eh
-        jne NextTrap
-        mov [eax], byte ptr 54h
-    NextTrap:
-        add esi, 8
-        dec ecx
-        cmp ecx, 0
-        jg UpdateTraps
-        ; End draw traps
+        push esi
+        push TRAP_COUNT
+        push 54h
+        call Draw
 
         ; Draw exit
+        PushMapOffset
         mov esi, ebp
         sub esi, EXIT_OFFSET
-        mov eax, ebp
-        sub eax, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
-        add eax, [esi]
-        mov edx, MAP_WIDTH + 1
-        imul edx, [esi+4]
-        add eax, edx
-        cmp [eax], byte ptr 2eh
-        jne ExitDrawn
-        mov [eax], byte ptr 57h
-    ExitDrawn:
+        push esi
+        push 1
+        push 57h
+        call Draw
         ; End draw exit
 
-        ; Updating player
+        ; Trying to draw player and also checking if it did hit some object
         mov esi, ebp
         sub esi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT + 1
         add esi, [edi]
         mov ecx, MAP_WIDTH + 1
         imul ecx, [edi+4]
         add esi, ecx
-        ; End updating player
 
         ; Check win/lose conditions
         ; Case step on enemy
@@ -367,6 +231,7 @@ main proc C
         je Win
         ; End checking
 
+        ; If player didnt hit anything, draw him
         mov byte ptr [esi], 50h
         jmp MainLoop
 
@@ -445,6 +310,7 @@ Init proc
         Epilogue 16
 Init endp
 
+; void InitRng()
 InitRng proc
         Prologue
 
@@ -458,6 +324,7 @@ InitRng proc
         Epilogue
 InitRng endp
 
+; void InitMap(char* pMap, int mapWidth, int mapHeight, char emptyTile)
 InitMap proc
         Prologue
 
@@ -466,25 +333,22 @@ InitMap proc
         push ebx
 
         ; Map ptr
-        mov esi, [ebp+20]
+        mov esi, [ebp+16]
         ; Width 
-        mov edi, [ebp+16]
+        mov edi, [ebp+12]
         ; Height
-        mov ebx, [ebp+12]
+        mov ebx, [ebp+8]
 
         ; After this ebx should have end of map ptr
-        mov ecx, [ebp+12]
+        mov ecx, [ebp+8]
         imul ecx, edi
         add ebx, ecx
         add ebx, esi
-        
-        ; Char to init
-        mov al, [ebp+8]
 
     InitMapLoop:
         mov ecx, edi
     InitMapRow:
-        mov byte ptr [esi-1], al
+        mov byte ptr [esi-1], 2eh
         inc esi
         ; while ecx > 0 filling the row with '.'
         loop InitMapRow
@@ -500,7 +364,230 @@ InitMap proc
         pop edi
         pop esi
 
-        Epilogue 16
+        Epilogue 12
 InitMap endp
+
+; bool GetInput(Vec2* playerPos, int mapWidth, int mapHeight)
+GetInput proc
+        Prologue
+
+        push ebx
+        push esi
+        push edi
+
+        ; Player pos offset
+        mov ebx, [ebp+16]
+        ; Map Width
+        mov esi, [ebp+12]
+        dec esi
+        ; Map Height
+        mov edi, [ebp+8]
+        dec edi
+
+    ProcessInput:
+        call _getch
+        sub eax, 97
+        jz CaseA
+        sub eax, 3
+        jz CaseD
+        sub eax, 13
+        jz CaseQ
+        sub eax, 2
+        jz CaseS
+        sub eax, 4
+        jz CaseW
+        jmp ProcessInput
+
+    CaseA:
+        cmp dword ptr [ebx], 0
+        je ProcessInput
+        dec dword ptr [ebx]
+        jmp Success
+    CaseD:
+        cmp dword ptr [ebx], esi
+        je ProcessInput
+        inc dword ptr [ebx]
+        jmp Success
+    CaseS:
+        cmp dword ptr [ebx+4], edi
+        je ProcessInput
+        inc dword ptr [ebx+4]
+        jmp Success
+    CaseW:
+        cmp dword ptr [ebx+4], 0
+        je ProcessInput
+        dec dword ptr [ebx+4]
+        jmp Success
+    CaseQ:
+        mov eax, 1
+        jmp GetInputEnd
+
+    Success:
+        xor eax, eax
+
+    GetInputEnd:
+        pop edi
+        pop esi
+        pop ebx
+
+        Epilogue 12
+GetInput endp
+
+; void UpdateEnemies(char* pMap, int mapWidth, Vec2** pEnemies, int enemyCount, Vec2* playerPos)
+UpdateEnemies proc
+        Prologue
+        push esi
+        push edi
+
+        ; enemy count
+        mov esi, [ebp+12]
+        ; ptr to first enemy pos
+        mov edi, [ebp+16]
+
+    UpdateEnemiesLoop:
+        push dword ptr [ebp+24]
+        push dword ptr [ebp+20]
+        push edi
+        push dword ptr [ebp+8]
+        call UpdateEnemy
+
+        dec esi
+        jz UpdateEnemiesEnd
+        add edi, 8
+        jmp UpdateEnemiesLoop
+        
+    UpdateEnemiesEnd:
+        xor eax, eax
+        pop edi
+        pop esi
+        Epilogue 20
+UpdateEnemies endp
+
+; void UpdateEnemy(char* pMap, int mapWidth, Vec2* pEnemy, Vec2* playerPos)
+UpdateEnemy proc
+        Prologue
+        sub esp, 8
+        push esi
+        push edi
+        push ebx
+
+        ; local for new enemyPos
+        mov esi, [ebp+12]
+        mov eax, [esi]
+        mov [ebp-8], eax ; x
+        add esi, 4
+        mov eax, [esi]
+        mov [ebp-4], eax ; y
+
+        ; map ptr
+        mov esi, [ebp+20]
+
+        ; player Pos ptr
+        mov edi, [ebp+8] ; x
+        mov ebx, edi
+        add ebx, 4 ; y
+
+        mov eax, [ebp-8]
+
+        sub eax, [edi]
+        je CompareY
+        cmp eax, 0
+        jg DecX
+        inc dword ptr [ebp-8]
+        jmp CompareY
+    DecX:
+        dec dword ptr [ebp-8]
+    
+    CompareY:
+        mov eax, [ebp-4]
+
+        sub eax, [ebx]
+        je CheckPos
+        cmp eax, 0
+        jg DecY
+        inc dword ptr [ebp-4]
+        jmp CheckPos
+    
+    DecY:
+        dec dword ptr [ebp-4]
+
+    CheckPos:
+        add esi, [ebp-8]
+        mov eax, [ebp+16]
+        inc eax
+        imul eax, [ebp-4]
+        add esi, eax
+        cmp [esi], byte ptr 45h ; if the place is occupied with enemy - we're done
+        je UpdateEnemyExit
+        mov [esi], byte ptr 45h ; else we mark the new place with enemy
+
+        ; And now we need to mark last place with empty tile and update enemy position
+        mov esi, [ebp+20]
+        mov eax, [ebp+12]
+        add esi, [eax]
+        add eax, 4
+        mov eax, [eax]
+        mov edx, [ebp+16]
+        inc edx
+        imul eax, edx
+        add esi, eax
+        mov [esi], byte ptr 2eh
+        
+        ;Updating enemy position
+        mov eax, [ebp+12]
+        mov edi, [ebp-8]
+        mov [eax], edi
+        add eax, 4
+        mov edi, [ebp-4]
+        mov [eax], edi
+
+        ; We're probably done
+    UpdateEnemyExit:
+        pop ebx
+        pop edi
+        pop esi
+        add esp, 8
+        Epilogue 16
+UpdateEnemy endp
+
+; void Draw(char* pMap, int* pToDraw, int numToDraw, char whatToDraw)
+Draw proc
+        Prologue
+
+        ; storing registers we're gonna modify
+        push edi
+        push esi
+        push ebx
+
+        ; EDI = pointer to something that we're drawing
+        mov edi, [ebp+16]
+        ; EBX = number of things that we're drawing
+        mov ebx, [ebp+12]
+    DrawLoop:
+        ; ESI = pointer to the start of the map
+        mov esi, [ebp+20]
+        add esi, [edi]
+        mov ecx, MAP_WIDTH + 1
+        imul ecx, [edi+4]
+        add esi, ecx
+        ; Draw only if it is an empty place
+        cmp byte ptr [esi], 2eh
+        jne NextDraw
+        mov dl, byte ptr [ebp+8]
+        mov byte ptr [esi], dl
+
+    NextDraw:
+        add edi, 8
+        dec ebx
+        cmp ebx, 0
+        jg DrawLoop
+
+        ; Restoring registers
+        pop ebx
+        pop esi
+        pop edi
+
+        Epilogue 16
+Draw endp
 
 END
