@@ -41,11 +41,21 @@ PushMapOffset MACRO
         push esi
 ENDM
 
+Prologue MACRO
+        push ebp
+        mov ebp, esp
+ENDM
+
+Epilogue MACRO bytesToDealloc
+        mov esp, ebp
+        pop ebp
+        ret bytesToDealloc
+ENDM
+
 .code
 
 main proc C
-        push ebp
-        mov ebp, esp
+        Prologue
 
         ; Allocating memory that we're going to use
         sub esp, EXIT_OFFSET
@@ -56,30 +66,16 @@ main proc C
         push ebx
 
         ; Init rand
-        push 0
-        call time
-        add esp, 4
-        push eax
-        call srand
-        add esp, 4
+        call InitRng
 
         ; Init Map
         mov edi, ebp
         sub edi, MAP_WIDTH * MAP_HEIGHT + MAP_HEIGHT
-    InitMapLoop:
-        mov ecx, MAP_WIDTH
-    InitMapRow:
-        mov byte ptr [edi-1], 2eh
-        inc edi
-        ; while ecx > 0 filling the row with '.'
-        loop InitMapRow
-        ; Endline at the end of the row
-        mov byte ptr [edi-1], 0ah
-        inc edi
-        cmp edi, ebp
-        jl InitMapLoop
-        ; Null terminator at the end of the map
-        mov byte ptr [edi-1], 0h
+        push edi
+        push MAP_WIDTH
+        push MAP_HEIGHT
+        push 2eh
+        call InitMap
 
         ; Init Player
         PushMapOffset
@@ -393,17 +389,14 @@ main proc C
 
         add esp, EXIT_OFFSET
 
-        mov esp, ebp
-        pop ebp
-
         xor eax, eax
-        ret
+
+        Epilogue
 main endp
 
 ; void Init(char* pMap, int* pToInit, int numToInit, char howToInit)
 Init proc
-        push ebp
-        mov ebp, esp
+        Prologue
 
         ; storing registers we're gonna modify
         push edi
@@ -449,9 +442,66 @@ Init proc
         pop esi
         pop edi
 
-        mov esp, ebp
-        pop ebp
-        ret 16
+        Epilogue 16
 Init endp
+
+InitRng proc
+        Prologue
+
+        push 0
+        call time
+        add esp, 4
+        push eax
+        call srand
+        add esp, 4
+
+        Epilogue
+InitRng endp
+
+InitMap proc
+        Prologue
+
+        push esi
+        push edi
+        push ebx
+
+        ; Map ptr
+        mov esi, [ebp+20]
+        ; Width 
+        mov edi, [ebp+16]
+        ; Height
+        mov ebx, [ebp+12]
+
+        ; After this ebx should have end of map ptr
+        mov ecx, [ebp+12]
+        imul ecx, edi
+        add ebx, ecx
+        add ebx, esi
+        inc ebx
+
+        ; Char to init
+        mov al, [ebp+8]
+
+    InitMapLoop:
+        mov ecx, edi
+    InitMapRow:
+        mov byte ptr [esi-1], al
+        inc esi
+        ; while ecx > 0 filling the row with '.'
+        loop InitMapRow
+        ; Endline at the end of the row
+        mov byte ptr [esi-1], 0ah
+        inc esi
+        cmp esi, ebx
+        jl InitMapLoop
+        ; Null terminator at the end of the map
+        mov byte ptr [esi-1], 0h
+
+        pop ebx
+        pop edi
+        pop esi
+
+        Epilogue 16
+InitMap endp
 
 END
