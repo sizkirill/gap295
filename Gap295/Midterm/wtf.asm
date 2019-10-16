@@ -83,6 +83,8 @@ main proc C
         mov esi, ebp
         sub esi, PLAYER_OFFSET
         push esi
+        push MAP_WIDTH
+        push MAP_HEIGHT
 
         push 1
         push 50h
@@ -161,42 +163,16 @@ main proc C
         add esi, ecx
         mov byte ptr [esi], 2eh
 
-    GetInput:
-        call _getch
-        sub eax, 97
-        jz CaseA
-        sub eax, 3
-        jz CaseD
-        sub eax, 13
-        jz CaseQ
-        sub eax, 2
-        jz CaseS
-        sub eax, 4
-        jz CaseW
-        jmp GetInput
+        int 3
 
-    CaseA:
-        cmp dword ptr [edi], 0
-        je GetInput
-        dec dword ptr [edi]
-        jmp Update
-    CaseD:
-        cmp dword ptr [edi], MAP_WIDTH-1
-        je GetInput
-        inc dword ptr [edi]
-        jmp Update
-    CaseS:
-        cmp dword ptr [edi+4], MAP_HEIGHT-1
-        je GetInput
-        inc dword ptr [edi+4]
-        jmp Update
-    CaseW:
-        cmp dword ptr [edi+4], 0
-        je GetInput
-        dec dword ptr [edi+4]
-        jmp Update
-    CaseQ:
-        jmp Quit
+        mov esi, ebp
+        sub esi, PLAYER_OFFSET
+        push esi
+        push MAP_WIDTH
+        push MAP_HEIGHT
+        call GetInput
+        cmp eax, 1
+        je Quit
 
     Update:
         ; Start Update Enemies
@@ -477,7 +453,7 @@ InitMap proc
         imul ecx, edi
         add ebx, ecx
         add ebx, esi
-        
+
         ; Char to init
         mov al, [ebp+8]
 
@@ -502,5 +478,70 @@ InitMap proc
 
         Epilogue 16
 InitMap endp
+
+GetInput proc
+        Prologue
+
+        push ebx
+        push esi
+        push edi
+
+        ; Player pos offset
+        mov ebx, [ebp+16]
+        ; Map Width
+        mov esi, [ebp+12]
+        dec esi
+        ; Map Height
+        mov edi, [ebp+8]
+        dec edi
+
+    ProcessInput:
+        call _getch
+        sub eax, 97
+        jz CaseA
+        sub eax, 3
+        jz CaseD
+        sub eax, 13
+        jz CaseQ
+        sub eax, 2
+        jz CaseS
+        sub eax, 4
+        jz CaseW
+        jmp ProcessInput
+
+    CaseA:
+        cmp dword ptr [ebx], 0
+        je ProcessInput
+        dec dword ptr [ebx]
+        jmp Success
+    CaseD:
+        cmp dword ptr [ebx], esi
+        je ProcessInput
+        inc dword ptr [ebx]
+        jmp Success
+    CaseS:
+        cmp dword ptr [ebx+4], edi
+        je ProcessInput
+        inc dword ptr [ebx+4]
+        jmp Success
+    CaseW:
+        cmp dword ptr [ebx+4], 0
+        je ProcessInput
+        dec dword ptr [ebx+4]
+        jmp Success
+    CaseQ:
+        mov eax, 1
+        jmp GetInputEnd
+
+    Success:
+        xor eax, eax
+
+    GetInputEnd:
+        pop edi
+        pop esi
+        pop ebx
+
+        Epilogue 12
+GetInput endp
 
 END
