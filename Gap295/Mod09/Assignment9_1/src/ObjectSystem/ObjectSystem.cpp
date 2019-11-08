@@ -29,17 +29,16 @@ void GameObject::Draw() const
 //---------------------------------------------------------------------------------------------------------------------
 ObjectSystem::ObjectSystem(size_t maxObjectCount)
     : m_maxObjectCount(maxObjectCount)
+    , m_currentIndex(0)
     , m_pBuffer(reinterpret_cast<GameObject*>(new std::byte[m_maxObjectCount * sizeof(GameObject)]))
-    , m_pBufferEnd(m_pBuffer + m_maxObjectCount)
-    , m_pBufferCurrent(m_pBuffer)
 {
 }
 
 ObjectSystem::~ObjectSystem()
 {
-    for (GameObject* pIt = m_pBuffer; pIt != m_pBufferCurrent; ++pIt)
+    for (size_t i = 0; i < m_currentIndex; ++i)
     {
-        pIt->~GameObject();
+        m_pBuffer[i].~GameObject();
     }
     delete[] reinterpret_cast<std::byte*>(m_pBuffer);
 }
@@ -48,28 +47,27 @@ void ObjectSystem::AddGameObject(const char* name, float x, float y, float z, fl
 {
     assert(m_pBufferCurrent != m_pBufferEnd);
 
-    new (m_pBufferCurrent) GameObject(name, x, y, z, width, height);
-    ++m_pBufferCurrent;
+    new (m_pBuffer + m_currentIndex) GameObject(name, x, y, z, width, height);
+    ++m_currentIndex;
 }
 
 void ObjectSystem::DestroyGameObject(size_t index)
 {
-    assert(m_pBufferCurrent > m_pBuffer && index < static_cast<size_t>(m_pBufferCurrent - m_pBuffer));
+    assert(index < m_currentIndex);
 
     m_pBuffer[index].~GameObject();
 
-    // ?
-    if (index != m_pBufferCurrent - m_pBuffer - 1)
-        memmove(m_pBuffer + index, m_pBuffer + index + 1, sizeof(GameObject) * (m_pBufferCurrent - m_pBuffer - index - 1));
+    if (index != m_currentIndex - 1)
+        memmove(m_pBuffer + index, m_pBuffer + index + 1, sizeof(GameObject) * (m_currentIndex - index - 1));
 
     --m_pBufferCurrent;
 }
 
 void ObjectSystem::Draw() const
 {
-    for (const GameObject* pIt = m_pBuffer; pIt != m_pBufferCurrent; ++pIt)
+    for (size_t i = 0; i < m_currentIndex; ++i)
     {
-        pIt->Draw();
+        m_pBuffer[i].Draw();
     }
     std::cout << std::endl;
 }
