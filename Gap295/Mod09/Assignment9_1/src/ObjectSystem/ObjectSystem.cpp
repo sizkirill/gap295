@@ -45,7 +45,7 @@ ObjectSystem::~ObjectSystem()
 
 void ObjectSystem::AddGameObject(const char* name, float x, float y, float z, float width, float height)
 {
-    assert(m_pBufferCurrent != m_pBufferEnd);
+    assert(m_currentIndex < m_maxObjectCount);
 
     new (m_pBuffer + m_currentIndex) GameObject(name, x, y, z, width, height);
     ++m_currentIndex;
@@ -60,7 +60,7 @@ void ObjectSystem::DestroyGameObject(size_t index)
     if (index != m_currentIndex - 1)
         memmove(m_pBuffer + index, m_pBuffer + index + 1, sizeof(GameObject) * (m_currentIndex - index - 1));
 
-    --m_pBufferCurrent;
+    --m_currentIndex;
 }
 
 void ObjectSystem::Draw() const
