@@ -24,21 +24,17 @@ public:
 
 class ObjectSystem
 {
-    const size_t m_maxObjectCount;
-
     GameObject* const m_pBuffer;
     GameObject* const m_pBufferEnd;
     GameObject* m_pBufferCurrent;
 
 public:
-    explicit ObjectSystem(size_t maxObjectCount);  // TODO: Fix me
+    explicit ObjectSystem(size_t maxObjectCount);
     ~ObjectSystem();
 
-    // TODO: Implement these
     void AddGameObject(const char* name, float x, float y, float z, float width, float height);
     void DestroyGameObject(size_t index);
 
-    // TODO: Fix me
     void Draw() const;
 };
 

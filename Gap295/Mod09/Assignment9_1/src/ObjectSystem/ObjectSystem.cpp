@@ -28,9 +28,8 @@ void GameObject::Draw() const
 // Object System
 //---------------------------------------------------------------------------------------------------------------------
 ObjectSystem::ObjectSystem(size_t maxObjectCount)
-    : m_maxObjectCount(maxObjectCount)
-    , m_pBuffer(reinterpret_cast<GameObject*>(new std::byte[m_maxObjectCount * sizeof(GameObject)]))
-    , m_pBufferEnd(m_pBuffer + m_maxObjectCount)
+    : m_pBuffer(reinterpret_cast<GameObject*>(new std::byte[maxObjectCount * sizeof(GameObject)]))
+    , m_pBufferEnd(m_pBuffer + maxObjectCount)
     , m_pBufferCurrent(m_pBuffer)
 {
 }
@@ -58,7 +57,6 @@ void ObjectSystem::DestroyGameObject(size_t index)
 
     m_pBuffer[index].~GameObject();
 
-    // ?
     if (index != m_pBufferCurrent - m_pBuffer - 1)
         memmove(m_pBuffer + index, m_pBuffer + index + 1, sizeof(GameObject) * (m_pBufferCurrent - m_pBuffer - index - 1));
 
