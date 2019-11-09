@@ -24,10 +24,10 @@ public:
 
 class ObjectSystem
 {
-    GameObject* const m_pBuffer;
-    GameObject* const m_pBufferEnd;
-    GameObject* m_pBufferCurrent;
+    const size_t m_maxObjectCount;
+    size_t m_currentIndex;
 
+    GameObject* const m_pBuffer;
 public:
     explicit ObjectSystem(size_t maxObjectCount);
     ~ObjectSystem();
