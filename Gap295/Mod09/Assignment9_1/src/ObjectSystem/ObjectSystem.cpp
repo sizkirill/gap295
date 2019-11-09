@@ -57,8 +57,7 @@ void ObjectSystem::DestroyGameObject(size_t index)
 
     m_pBuffer[index].~GameObject();
 
-    if (index != m_pBufferCurrent - m_pBuffer - 1)
-        memmove(m_pBuffer + index, m_pBuffer + index + 1, sizeof(GameObject) * (m_pBufferCurrent - m_pBuffer - index - 1));
+    memmove(m_pBuffer + index, m_pBuffer + index + 1, sizeof(GameObject) * (m_pBufferCurrent - m_pBuffer - index - 1));
 
     --m_pBufferCurrent;
 }
