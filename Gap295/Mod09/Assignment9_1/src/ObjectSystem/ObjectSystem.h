@@ -26,8 +26,8 @@ class ObjectSystem
 {
     const size_t m_maxObjectCount;
     size_t m_currentIndex;
-
     GameObject* const m_pBuffer;
+
 public:
     explicit ObjectSystem(size_t maxObjectCount);
     ~ObjectSystem();
