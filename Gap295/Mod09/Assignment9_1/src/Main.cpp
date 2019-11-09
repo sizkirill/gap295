@@ -1,6 +1,5 @@
 // Main.cpp
 #include <vld.h>
-#include <ctime>
 #include <iostream>
 #include "ObjectSystem/ObjectSystem.h"
 
